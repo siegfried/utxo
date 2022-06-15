@@ -1,5 +1,7 @@
 # General utilities of UTxO
 
+[![Rust](https://github.com/siegfried/utxo/actions/workflows/rust.yml/badge.svg)](https://github.com/siegfried/utxo/actions/workflows/rust.yml)
+
 This package provides tools to ease the development of Blockchains based on UTxO model.
 
 ## License
