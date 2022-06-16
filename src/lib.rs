@@ -1,6 +1,6 @@
 //! General utilities of UTxO
 //!
-//! This package provides tools to ease the development of Blockchains based on UTxO model.
+//! This package provides tools to ease the development of Cryptocurrencies based on UTxO model.
 //!
 
 use std::cmp::Ordering;
