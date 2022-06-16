@@ -31,6 +31,8 @@ pub trait Select: Sized {
     /// * spend as fewer UTxOs as possible;
     /// * spend as fewer native assets as possible;
     /// * produce as fewer [Dust] as possible;
+    ///
+    /// [Dust]: https://www.investopedia.com/terms/b/bitcoin-dust.asp
     fn compare(&self, other: &Self, output: &Self) -> Ordering;
 }
 
@@ -46,9 +48,6 @@ pub trait Select: Sized {
 /// otherwise returns `None` (no enough inputs).
 /// The `excess` can be used to pay the fee and return the change.
 /// The `unselected` UTxOs can be selected later if more are needed.
-///
-/// [Dust]: https://www.investopedia.com/terms/b/bitcoin-dust.asp
-///
 pub fn select<'a, T: Select + Clone>(
     inputs: &'a mut [T],
     output: &T,
