@@ -26,16 +26,15 @@ pub trait Select: Sized {
     fn is_enough(&self, rhs: &Self) -> bool;
 
     /// Compare two UTxOs to see which is better for the output, the less the better.
+    /// A good strategy of UTxO selection should:
+    ///
+    /// * spend as fewer UTxOs as possible;
+    /// * spend as fewer native assets as possible;
+    /// * produce as fewer [Dust] as possible;
     fn compare(&self, other: &Self, output: &Self) -> Ordering;
 }
 
 /// Select UTxOs.
-///
-/// A good strategy of UTxO selection should:
-///
-/// 1. spend as fewer UTxOs as possible;
-/// 2. spend as fewer native assets as possible;
-/// 3. produce as fewer [Dust] as possible;
 ///
 /// # Arguments
 ///
