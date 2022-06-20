@@ -132,15 +132,26 @@ mod tests {
 
     #[test]
     fn test_select_ok() {
-        let mut inputs: [Output; 5] = [5.into(), 7.into(), 4.into(), 3.into(), 8.into()];
+        let mut inputs: [Output; 5] = [5.into(), 7.into(), 2.into(), 1.into(), 8.into()];
         let total_output: Output = 13.into();
 
         assert_eq!(
             select(&mut inputs, &total_output, &Output::zero()),
             Some((
                 [8.into(), 5.into()].as_mut_slice(),
-                [4.into(), 3.into(), 7.into()].as_mut_slice(),
+                [2.into(), 1.into(), 7.into()].as_mut_slice(),
                 Output::zero()
+            ))
+        );
+
+        let total_output: Output = 6.into();
+
+        assert_eq!(
+            select(&mut inputs, &total_output, &Output::zero()),
+            Some((
+                [7.into()].as_mut_slice(),
+                [5.into(), 2.into(), 1.into(), 8.into()].as_mut_slice(),
+                1.into()
             ))
         );
     }
