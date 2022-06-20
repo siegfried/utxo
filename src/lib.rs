@@ -107,7 +107,7 @@ impl Select for Output {
     fn compare(&self, other: &Self, output: &Self) -> Ordering {
         let left = output.value.abs_diff(self.value);
         let right = output.value.abs_diff(other.value);
-        left.cmp(&right)
+        left.cmp(&right).then(self.value.cmp(&other.value).reverse())
     }
 }
 
