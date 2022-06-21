@@ -72,12 +72,12 @@ pub fn select<'a, T: Select + Clone>(
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Output {
-    id: Option<(String, u64)>,
-    value: u64,
+pub struct Output<I> {
+    pub id: Option<I>,
+    pub value: u64,
 }
 
-impl Select for Output {
+impl<I> Select for Output<I> {
     fn zero() -> Self {
         Self { id: None, value: 0 }
     }
@@ -117,7 +117,7 @@ mod tests {
 
     use crate::{select, Output, Select};
 
-    impl From<u64> for Output {
+    impl<I> From<u64> for Output<I> {
         fn from(value: u64) -> Self {
             Self { id: None, value }
         }
@@ -125,15 +125,15 @@ mod tests {
 
     #[test]
     fn test_output_compare() {
-        let output: Output = 7.into();
+        let output: Output<u8> = 7.into();
 
         assert_eq!(output.compare(&8.into(), &9.into()), Ordering::Greater)
     }
 
     #[test]
     fn test_select_ok() {
-        let mut inputs: [Output; 5] = [5.into(), 7.into(), 2.into(), 1.into(), 8.into()];
-        let total_output: Output = 13.into();
+        let mut inputs: [Output<u8>; 5] = [5.into(), 7.into(), 2.into(), 1.into(), 8.into()];
+        let total_output: Output<u8> = 13.into();
 
         assert_eq!(
             select(&mut inputs, &total_output, &Output::zero()),
@@ -144,7 +144,7 @@ mod tests {
             ))
         );
 
-        let total_output: Output = 6.into();
+        let total_output: Output<u8> = 6.into();
 
         assert_eq!(
             select(&mut inputs, &total_output, &Output::zero()),
@@ -158,8 +158,8 @@ mod tests {
 
     #[test]
     fn test_select_failed() {
-        let mut inputs: [Output; 2] = [5.into(), 7.into()];
-        let total_output: Output = 13.into();
+        let mut inputs: [Output<u8>; 2] = [5.into(), 7.into()];
+        let total_output: Output<u8> = 13.into();
 
         assert_eq!(select(&mut inputs, &total_output, &Output::zero()), None);
     }
