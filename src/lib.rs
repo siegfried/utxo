@@ -71,6 +71,10 @@ pub fn select<'a, T: Select + Clone>(
     Some((selected, unselected, excess))
 }
 
+/// Output without native assets (e.g. Bitcoin)
+///
+/// The algorithm of selection always chooses the largest output.
+/// It is expected to use fewer outputs.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Output<I> {
     pub id: Option<I>,
