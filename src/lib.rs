@@ -22,9 +22,6 @@ pub trait Select: Sized {
     /// than the value on the right.
     fn clamped_sub(&self, rhs: &Self) -> Self;
 
-    /// Return true if it is enough to pay the value on right side, otherwise return false.
-    fn is_enough(&self, rhs: &Self) -> bool;
-
     /// Compare two UTxOs to see which is better for the output, the less the better.
     /// A good strategy of UTxO selection should:
     ///
@@ -55,20 +52,21 @@ pub fn select<'a, T: Select + Clone>(
 ) -> Option<(&'a mut [T], &'a mut [T], T)> {
     let mut total_selected = T::zero();
     let mut index = 0;
-    let mut goal = output.clone();
     let extra_output = output.checked_add(threshold)?;
+    let mut goal = extra_output.clone();
+    let mut excess = None;
 
-    while !total_selected.is_enough(&extra_output) {
+    while excess.is_none() {
         inputs.get(index)?;
         let (_, input, _) = inputs[index..].select_nth_unstable_by(0, |x, y| x.compare(y, &goal));
         total_selected = total_selected.checked_add(input)?;
         goal = goal.clamped_sub(&input);
         index += 1;
+        excess = total_selected.checked_sub(&extra_output);
     }
 
-    let excess = total_selected.checked_sub(output)?;
     let (selected, unselected) = inputs.split_at_mut(index);
-    Some((selected, unselected, excess))
+    Some((selected, unselected, excess?))
 }
 
 /// Output without native assets (e.g. Bitcoin)
@@ -104,10 +102,6 @@ impl<I> Select for Output<I> {
         self.checked_sub(rhs).unwrap_or(Self::zero())
     }
 
-    fn is_enough(&self, rhs: &Self) -> bool {
-        self.value >= rhs.value
-    }
-
     fn compare(&self, other: &Self, _: &Self) -> Ordering {
         other.value.cmp(&self.value)
     }
@@ -135,14 +129,22 @@ mod tests {
     #[test]
     fn test_select_ok() {
         let mut inputs: [Output<u8>; 5] = [5.into(), 7.into(), 2.into(), 1.into(), 8.into()];
-        let total_output: Output<u8> = 13.into();
 
         assert_eq!(
-            select(&mut inputs, &total_output, &Output::zero()),
+            select(&mut inputs, &13.into(), &Output::zero()),
             Some((
                 [8.into(), 7.into()].as_mut_slice(),
                 [2.into(), 1.into(), 5.into()].as_mut_slice(),
                 2.into()
+            ))
+        );
+
+        assert_eq!(
+            select(&mut inputs, &15.into(), &2.into()),
+            Some((
+                [8.into(), 7.into(), 5.into()].as_mut_slice(),
+                [1.into(), 2.into()].as_mut_slice(),
+                3.into()
             ))
         );
     }
