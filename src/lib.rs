@@ -66,7 +66,9 @@ pub fn select<'a, T: Select + Clone>(
     }
 
     let (selected, unselected) = inputs.split_at_mut(index);
-    Some((selected, unselected, excess?))
+    let excess = excess?.checked_add(threshold)?;
+
+    Some((selected, unselected, excess))
 }
 
 /// Output without native assets (e.g. Bitcoin)
@@ -144,7 +146,16 @@ mod tests {
             Some((
                 [8.into(), 7.into(), 5.into()].as_mut_slice(),
                 [1.into(), 2.into()].as_mut_slice(),
-                3.into()
+                5.into()
+            ))
+        );
+
+        assert_eq!(
+            select(&mut inputs, &10.into(), &8.into()),
+            Some((
+                [8.into(), 7.into(), 5.into()].as_mut_slice(),
+                [1.into(), 2.into()].as_mut_slice(),
+                10.into()
             ))
         );
     }
