@@ -71,71 +71,87 @@ pub fn select<'a, T: Select + Clone>(
     Some((selected, unselected, excess))
 }
 
+/// Output without native assets (e.g. Bitcoin)
+///
+/// The algorithm of selection always chooses the largest output.
+/// It is expected to use fewer outputs.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Output<I> {
+    pub id: Option<I>,
+    pub value: u64,
+}
+
+impl<I> Select for Output<I> {
+    fn zero() -> Self {
+        Self { id: None, value: 0 }
+    }
+
+    fn checked_add(&self, rhs: &Self) -> Option<Self> {
+        Some(Self {
+            id: None,
+            value: self.value.checked_add(rhs.value)?,
+        })
+    }
+
+    fn checked_sub(&self, rhs: &Self) -> Option<Self> {
+        Some(Self {
+            id: None,
+            value: self.value.checked_sub(rhs.value)?,
+        })
+    }
+
+    fn clamped_sub(&self, rhs: &Self) -> Self {
+        self.checked_sub(rhs).unwrap_or(Self::zero())
+    }
+
+    fn is_enough(&self, rhs: &Self) -> bool {
+        self.value >= rhs.value
+    }
+
+    fn compare(&self, other: &Self, _: &Self) -> Ordering {
+        other.value.cmp(&self.value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
 
-    use crate::{select, Select};
+    use crate::{select, Output, Select};
 
-    #[derive(Clone, Debug, PartialEq, PartialOrd)]
-    struct Value(u8);
-
-    impl Select for Value {
-        fn zero() -> Self {
-            Self(0)
-        }
-
-        fn checked_add(&self, rhs: &Self) -> Option<Self> {
-            Some(Self(self.0.checked_add(rhs.0)?))
-        }
-
-        fn checked_sub(&self, rhs: &Self) -> Option<Self> {
-            Some(Self(self.0.checked_sub(rhs.0)?))
-        }
-
-        fn clamped_sub(&self, rhs: &Self) -> Self {
-            self.checked_sub(rhs).unwrap_or(Self(0))
-        }
-
-        fn is_enough(&self, rhs: &Self) -> bool {
-            self >= rhs
-        }
-
-        fn compare(&self, other: &Self, output: &Self) -> Ordering {
-            let left = self.0.abs_diff(output.0);
-            let right = other.0.abs_diff(output.0);
-            left.cmp(&right)
+    impl<I> From<u64> for Output<I> {
+        fn from(value: u64) -> Self {
+            Self { id: None, value }
         }
     }
 
     #[test]
-    fn test_dummy_value() {
-        assert_eq!(
-            Value(7).compare(&Value(8), &Value(9)),
-            Ordering::Greater
-        )
+    fn test_output_compare() {
+        let output: Output<u8> = 7.into();
+
+        assert_eq!(output.compare(&8.into(), &9.into()), Ordering::Greater)
     }
 
     #[test]
     fn test_select_ok() {
-        let mut inputs = [Value(5), Value(7), Value(4), Value(3), Value(8)];
-        let total_output = Value(13);
+        let mut inputs: [Output<u8>; 5] = [5.into(), 7.into(), 2.into(), 1.into(), 8.into()];
+        let total_output: Output<u8> = 13.into();
 
         assert_eq!(
-            select(&mut inputs, &total_output, &Value::zero()),
+            select(&mut inputs, &total_output, &Output::zero()),
             Some((
-                [Value(8), Value(5)].as_mut_slice(),
-                [Value(4), Value(3), Value(7)].as_mut_slice(),
-                Value(0)
+                [8.into(), 7.into()].as_mut_slice(),
+                [2.into(), 1.into(), 5.into()].as_mut_slice(),
+                2.into()
             ))
         );
     }
 
     #[test]
     fn test_select_failed() {
-        let mut inputs = [Value(5), Value(7)];
-        let total_output = Value(13);
+        let mut inputs: [Output<u8>; 2] = [5.into(), 7.into()];
+        let total_output: Output<u8> = 13.into();
 
-        assert_eq!(select(&mut inputs, &total_output, &Value::zero()), None);
+        assert_eq!(select(&mut inputs, &total_output, &Output::zero()), None);
     }
 }
