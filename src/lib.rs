@@ -104,11 +104,8 @@ impl<I> Select for Output<I> {
         self.value >= rhs.value
     }
 
-    fn compare(&self, other: &Self, output: &Self) -> Ordering {
-        let left = output.value.abs_diff(self.value);
-        let right = output.value.abs_diff(other.value);
-        left.cmp(&right)
-            .then(self.value.cmp(&other.value).reverse())
+    fn compare(&self, other: &Self, _: &Self) -> Ordering {
+        other.value.cmp(&self.value)
     }
 }
 
@@ -139,20 +136,9 @@ mod tests {
         assert_eq!(
             select(&mut inputs, &total_output, &Output::zero()),
             Some((
-                [8.into(), 5.into()].as_mut_slice(),
-                [2.into(), 1.into(), 7.into()].as_mut_slice(),
-                Output::zero()
-            ))
-        );
-
-        let total_output: Output<u8> = 6.into();
-
-        assert_eq!(
-            select(&mut inputs, &total_output, &Output::zero()),
-            Some((
-                [7.into()].as_mut_slice(),
-                [5.into(), 2.into(), 1.into(), 8.into()].as_mut_slice(),
-                1.into()
+                [8.into(), 7.into()].as_mut_slice(),
+                [2.into(), 1.into(), 5.into()].as_mut_slice(),
+                2.into()
             ))
         );
     }
