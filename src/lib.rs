@@ -3,7 +3,7 @@
 //! This package provides tools to ease the development of Cryptocurrencies based on UTxO model.
 //!
 
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::BTreeMap};
 
 /// The Select trait offers an interface of UTxO selection.
 ///
@@ -113,11 +113,121 @@ impl<I> Select for Output<I> {
     }
 }
 
+/// Output with native assets (e.g. Cardano, Ergo)
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExtOutput<I, K> {
+    pub id: Option<I>,
+    pub value: u64,
+    pub assets: BTreeMap<K, u64>,
+}
+
+impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
+    fn zero() -> Self {
+        Self {
+            id: None,
+            value: 0,
+            assets: BTreeMap::new(),
+        }
+    }
+
+    fn checked_add(&self, rhs: &Self) -> Option<Self> {
+        let mut assets: BTreeMap<K, u64> = BTreeMap::new();
+
+        for (key, value) in self.assets.iter().chain(rhs.assets.iter()) {
+            let value = assets.get(key).unwrap_or(&0).checked_add(*value)?;
+            assets.insert(key.clone(), value);
+        }
+
+        Some(Self {
+            id: None,
+            value: self.value.checked_add(rhs.value)?,
+            assets,
+        })
+    }
+
+    fn checked_sub(&self, rhs: &Self) -> Option<Self> {
+        let mut assets = self.assets.clone();
+
+        for (key, value) in rhs.assets.iter() {
+            if let Some(asset) = assets.get(key) {
+                let value = asset.checked_sub(*value)?;
+
+                if value > u64::MIN {
+                    assets.insert(key.clone(), value);
+                } else {
+                    assets.remove(key);
+                }
+            }
+        }
+
+        Some(Self {
+            id: None,
+            value: self.value.checked_sub(rhs.value)?,
+            assets,
+        })
+    }
+
+    fn saturating_sub(&self, rhs: &Self) -> Self {
+        let mut assets = self.assets.clone();
+
+        for (key, value) in rhs.assets.iter() {
+            if let Some(asset) = assets.get(key) {
+                let value = asset.saturating_sub(*value);
+
+                if value > u64::MIN {
+                    assets.insert(key.clone(), value);
+                } else {
+                    assets.remove(key);
+                }
+            }
+        }
+
+        Self {
+            id: None,
+            value: self.value.saturating_sub(rhs.value),
+            assets,
+        }
+    }
+
+    fn compare(&self, other: &Self, output: &Self) -> Ordering {
+        let lhs = self
+            .assets
+            .keys()
+            .filter(|k| !output.assets.contains_key(k))
+            .count();
+        let rhs = other
+            .assets
+            .keys()
+            .filter(|k| !output.assets.contains_key(k))
+            .count();
+
+        lhs.cmp(&rhs).then({
+            let lhs = output
+                .assets
+                .keys()
+                .filter(|k| self.assets.contains_key(k))
+                .count();
+            let rhs = output
+                .assets
+                .keys()
+                .filter(|k| other.assets.contains_key(k))
+                .count();
+
+            rhs.cmp(&lhs).then({
+                let lhs = self.value;
+                let rhs = other.value;
+
+                rhs.cmp(&lhs)
+            })
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::cmp::Ordering;
+    use std::{cmp::Ordering, collections::BTreeMap};
 
-    use crate::{select, Output, Select};
+    use crate::{select, ExtOutput, Output, Select};
 
     impl<I> From<u64> for Output<I> {
         fn from(value: u64) -> Self {
@@ -126,14 +236,14 @@ mod tests {
     }
 
     #[test]
-    fn test_output_compare() {
+    fn test_output() {
         let output: Output<u8> = 7.into();
 
         assert_eq!(output.compare(&8.into(), &9.into()), Ordering::Greater)
     }
 
     #[test]
-    fn test_select_ok() {
+    fn test_output_select_ok() {
         let mut inputs: [Output<u8>; 5] = [5.into(), 7.into(), 2.into(), 1.into(), 8.into()];
 
         assert_eq!(
@@ -165,10 +275,73 @@ mod tests {
     }
 
     #[test]
-    fn test_select_failed() {
+    fn test_output_select_failed() {
         let mut inputs: [Output<u8>; 2] = [5.into(), 7.into()];
         let total_output: Output<u8> = 13.into();
 
         assert_eq!(select(&mut inputs, &total_output, &Output::zero()), None);
+    }
+
+    #[test]
+    fn test_ext_output() {
+        let goal = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 10;
+            output.assets.insert(&"asset1", 10);
+            output.assets.insert(&"asset2", 20);
+            output
+        };
+
+        let output = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 20;
+            output.assets.insert(&"asset1", 30);
+            output.assets.insert(&"asset3", 1);
+            output
+        };
+
+        assert_eq!(goal.saturating_sub(&output), {
+            let mut assets: BTreeMap<&str, u64> = BTreeMap::new();
+            assets.insert(&"asset2", 20);
+
+            ExtOutput {
+                id: None,
+                value: 0,
+                assets,
+            }
+        });
+
+        assert_eq!(goal.checked_sub(&output), None);
+
+        assert_eq!(goal.checked_add(&output), {
+            let mut assets: BTreeMap<&str, u64> = BTreeMap::new();
+            assets.insert(&"asset1", 40);
+            assets.insert(&"asset2", 20);
+            assets.insert(&"asset3", 1);
+
+            Some(ExtOutput {
+                id: None,
+                value: 30,
+                assets,
+            })
+        });
+
+        let output = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 10;
+            output.assets.insert(&"asset1", 10);
+            output
+        };
+
+        assert_eq!(goal.checked_sub(&output), {
+            let mut assets: BTreeMap<&str, u64> = BTreeMap::new();
+            assets.insert(&"asset2", 20);
+
+            Some(ExtOutput {
+                id: None,
+                value: 0,
+                assets,
+            })
+        });
     }
 }
