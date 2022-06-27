@@ -83,7 +83,10 @@ pub struct Output<I> {
 
 impl<I> Select for Output<I> {
     fn zero() -> Self {
-        Self { id: None, value: 0 }
+        Self {
+            id: None,
+            value: u64::MIN,
+        }
     }
 
     fn checked_add(&self, rhs: &Self) -> Option<Self> {
@@ -101,7 +104,10 @@ impl<I> Select for Output<I> {
     }
 
     fn clamped_sub(&self, rhs: &Self) -> Self {
-        self.checked_sub(rhs).unwrap_or(Self::zero())
+        Self {
+            id: None,
+            value: self.value.saturating_sub(rhs.value),
+        }
     }
 
     fn compare(&self, other: &Self, _: &Self) -> Ordering {
