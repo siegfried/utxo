@@ -8,21 +8,19 @@ use std::cmp::Ordering;
 /// The Select trait offers an interface of UTxO selection.
 ///
 pub trait Select: Sized {
-    /// Create zero value of the UTxO type.
+    /// Creates zero value of the UTxO type.
     fn zero() -> Self;
 
-    /// Add two values, return `None` if any value overflows.
+    /// Computes `self + rhs`, returning `None` if overflow occurred.
     fn checked_add(&self, rhs: &Self) -> Option<Self>;
 
-    /// Subtract value on right side, return `None` if any value on the left is smaller
-    /// than the value on the right.
+    /// Computes `self - rhs`, returning `None` if overflow occurred.
     fn checked_sub(&self, rhs: &Self) -> Option<Self>;
 
-    /// Subtract value on right side, return zero if any value on the left is smaller
-    /// than the value on the right.
-    fn clamped_sub(&self, rhs: &Self) -> Self;
+    /// Computes `self - rhs`, saturating at the lowest bound if overflow occurred.
+    fn saturating_sub(&self, rhs: &Self) -> Self;
 
-    /// Compare two UTxOs to see which is better for the output, the less the better.
+    /// Compares two UTxOs to see which is better for the output, the less the better.
     /// A good strategy of UTxO selection should:
     ///
     /// * spend as fewer UTxOs as possible;
@@ -60,7 +58,7 @@ pub fn select<'a, T: Select + Clone>(
         inputs.get(index)?;
         let (_, input, _) = inputs[index..].select_nth_unstable_by(0, |x, y| x.compare(y, &goal));
         total_selected = total_selected.checked_add(input)?;
-        goal = goal.clamped_sub(&input);
+        goal = goal.saturating_sub(&input);
         index += 1;
         excess = total_selected.checked_sub(&extra_output);
     }
@@ -103,7 +101,7 @@ impl<I> Select for Output<I> {
         })
     }
 
-    fn clamped_sub(&self, rhs: &Self) -> Self {
+    fn saturating_sub(&self, rhs: &Self) -> Self {
         Self {
             id: None,
             value: self.value.saturating_sub(rhs.value),
