@@ -190,36 +190,32 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
     }
 
     fn compare(&self, other: &Self, output: &Self) -> Ordering {
-        let lhs = self
-            .assets
+        let lm = output.count_mutual(self);
+        let rm = output.count_mutual(other);
+        let ld = self.count_diff(output);
+        let rd = other.count_diff(output);
+
+        rm.saturating_sub(rd)
+            .cmp(&lm.saturating_sub(ld))
+            .then_with(|| rm.cmp(&lm))
+            .then_with(|| ld.cmp(&rd))
+            .then_with(|| other.value.cmp(&self.value))
+    }
+}
+
+impl<I, K: Ord> ExtOutput<I, K> {
+    fn count_diff(&self, other: &Self) -> usize {
+        self.assets
             .keys()
-            .filter(|k| !output.assets.contains_key(k))
-            .count();
-        let rhs = other
-            .assets
+            .filter(|k| !other.assets.contains_key(k))
+            .count()
+    }
+
+    fn count_mutual(&self, other: &Self) -> usize {
+        self.assets
             .keys()
-            .filter(|k| !output.assets.contains_key(k))
-            .count();
-
-        lhs.cmp(&rhs).then({
-            let lhs = output
-                .assets
-                .keys()
-                .filter(|k| self.assets.contains_key(k))
-                .count();
-            let rhs = output
-                .assets
-                .keys()
-                .filter(|k| other.assets.contains_key(k))
-                .count();
-
-            rhs.cmp(&lhs).then({
-                let lhs = self.value;
-                let rhs = other.value;
-
-                rhs.cmp(&lhs)
-            })
-        })
+            .filter(|k| other.assets.contains_key(k))
+            .count()
     }
 }
 
@@ -236,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn test_output() {
+    fn test_output_compare() {
         let output: Output<u8> = 7.into();
 
         assert_eq!(output.compare(&8.into(), &9.into()), Ordering::Greater)
@@ -300,6 +296,11 @@ mod tests {
             output
         };
 
+        assert_eq!(goal.count_diff(&output), 1);
+        assert_eq!(goal.count_mutual(&output), 1);
+        assert_eq!(output.count_diff(&goal), 1);
+        assert_eq!(output.count_mutual(&goal), 1);
+
         assert_eq!(goal.saturating_sub(&output), {
             let mut assets: BTreeMap<&str, u64> = BTreeMap::new();
             assets.insert(&"asset2", 20);
@@ -332,6 +333,11 @@ mod tests {
             output.assets.insert(&"asset1", 10);
             output
         };
+
+        assert_eq!(goal.count_diff(&output), 1);
+        assert_eq!(goal.count_mutual(&output), 1);
+        assert_eq!(output.count_diff(&goal), 0);
+        assert_eq!(output.count_mutual(&goal), 1);
 
         assert_eq!(goal.checked_sub(&output), {
             let mut assets: BTreeMap<&str, u64> = BTreeMap::new();
