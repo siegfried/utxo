@@ -190,15 +190,11 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
     }
 
     fn compare(&self, other: &Self, output: &Self) -> Ordering {
-        let lm = output.count_mutual(self);
-        let rm = output.count_mutual(other);
-        let ld = self.count_diff(output);
-        let rd = other.count_diff(output);
+        let self_info = AssetInfo::new(output.count_mutual(self), self.count_diff(output));
+        let other_info = AssetInfo::new(output.count_mutual(other), other.count_diff(output));
 
-        rm.saturating_sub(rd)
-            .cmp(&lm.saturating_sub(ld))
-            .then_with(|| rm.cmp(&lm))
-            .then_with(|| ld.cmp(&rd))
+        self_info
+            .cmp(&other_info)
             .then_with(|| other.value.cmp(&self.value))
     }
 }
@@ -219,11 +215,48 @@ impl<I, K: Ord> ExtOutput<I, K> {
     }
 }
 
+#[derive(PartialEq, Eq)]
+struct AssetInfo {
+    mutual: usize,
+    diff: usize,
+}
+
+impl AssetInfo {
+    fn new(mutual: usize, diff: usize) -> Self {
+        Self { mutual, diff }
+    }
+
+    fn net_mutual(&self) -> usize {
+        self.mutual.saturating_sub(self.diff)
+    }
+
+    fn abs_diff(&self) -> usize {
+        self.mutual.abs_diff(self.diff)
+    }
+}
+
+impl Ord for AssetInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .net_mutual()
+            .cmp(&self.net_mutual())
+            .then_with(|| self.abs_diff().cmp(&other.abs_diff()))
+            .then_with(|| other.mutual.cmp(&self.mutual))
+            .then_with(|| self.diff.cmp(&other.diff))
+    }
+}
+
+impl PartialOrd for AssetInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{cmp::Ordering, collections::BTreeMap};
 
-    use crate::{select, ExtOutput, Output, Select};
+    use crate::{select, AssetInfo, ExtOutput, Output, Select};
 
     impl<I> From<u64> for Output<I> {
         fn from(value: u64) -> Self {
@@ -349,5 +382,17 @@ mod tests {
                 assets,
             })
         });
+    }
+
+    #[test]
+    fn test_asset_info_compare() {
+        assert!(AssetInfo::new(10, 0) < AssetInfo::new(1, 0));
+        assert!(AssetInfo::new(10, 1) < AssetInfo::new(1, 0));
+        assert!(AssetInfo::new(4, 2) < AssetInfo::new(5, 10));
+        assert!(AssetInfo::new(4, 4) < AssetInfo::new(5, 10));
+        assert!(AssetInfo::new(1, 1) == AssetInfo::new(1, 1));
+        assert!(AssetInfo::new(1, 1) < AssetInfo::new(0, 1));
+        assert!(AssetInfo::new(1, 1) < AssetInfo::new(0, 0));
+        assert!(AssetInfo::new(2, 2) < AssetInfo::new(1, 1));
     }
 }
