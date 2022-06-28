@@ -123,6 +123,8 @@ impl<I> Select for Output<I> {
 /// 3. If the values of #2 are equal, the more `wanted` assets the better.
 /// 4. If the values of #3 are equal, the fewer `unwanted` assets the better.
 /// 5. If the values of #4 are equal, the larger value the better.
+///
+/// The value of asset should not be `0`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtOutput<I, K> {
     pub id: Option<I>,
@@ -223,6 +225,13 @@ impl<I, K: Ord> ExtOutput<I, K> {
             .keys()
             .filter(|k| other.assets.contains_key(k))
             .count()
+    }
+
+    /// Insert asset value, skip if the value is `zero`.
+    pub fn insert_asset(&mut self, key: K, value: u64) {
+        if value > u64::MIN {
+            self.assets.insert(key, value);
+        }
     }
 }
 
@@ -491,5 +500,19 @@ mod tests {
         let mut inputs = [output.clone()];
 
         assert_eq!(select(&mut inputs, &goal, &ExtOutput::zero()), None);
+    }
+
+    #[test]
+    fn test_ext_output_insert_asset() {
+        let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+        output.insert_asset(&"asset1", 0);
+        assert_eq!(output, ExtOutput::zero());
+
+        output.insert_asset(&"asset1", 1);
+        assert_eq!(output, {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.assets.insert(&"asset1", 1);
+            output
+        })
     }
 }
