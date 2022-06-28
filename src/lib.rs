@@ -134,7 +134,7 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         let mut assets: BTreeMap<K, u64> = BTreeMap::new();
 
         for (key, value) in self.assets.iter().chain(rhs.assets.iter()) {
-            let value = assets.get(key).unwrap_or(&0).checked_add(*value)?;
+            let value = assets.get(key).unwrap_or(&u64::MIN).checked_add(*value)?;
             assets.insert(key.clone(), value);
         }
 
@@ -149,14 +149,15 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         let mut assets = self.assets.clone();
 
         for (key, value) in rhs.assets.iter() {
-            if let Some(asset) = assets.get(key) {
-                let value = asset.checked_sub(*value)?;
+            let value = assets
+                .get(key)
+                .or(Some(&u64::MIN))
+                .and_then(|v| v.checked_sub(*value))?;
 
-                if value > u64::MIN {
-                    assets.insert(key.clone(), value);
-                } else {
-                    assets.remove(key);
-                }
+            if value > u64::MIN {
+                assets.insert(key.clone(), value);
+            } else {
+                assets.remove(key);
             }
         }
 
@@ -171,9 +172,10 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         let mut assets = self.assets.clone();
 
         for (key, value) in rhs.assets.iter() {
-            if let Some(asset) = assets.get(key) {
-                let value = asset.saturating_sub(*value);
-
+            if let Some(value) = assets
+                .get(key)
+                .and_then(|v| v.saturating_sub(*value).into())
+            {
                 if value > u64::MIN {
                     assets.insert(key.clone(), value);
                 } else {
@@ -394,5 +396,91 @@ mod tests {
         assert!(AssetInfo::new(1, 1) < AssetInfo::new(0, 1));
         assert!(AssetInfo::new(1, 1) < AssetInfo::new(0, 0));
         assert!(AssetInfo::new(2, 2) < AssetInfo::new(1, 1));
+    }
+
+    #[test]
+    fn test_ext_output_select_ok() {
+        let goal = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 10;
+            output.assets.insert(&"asset1", 10);
+            output.assets.insert(&"asset2", 20);
+            output
+        };
+
+        let output0 = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 20;
+            output.assets.insert(&"asset1", 30);
+            output.assets.insert(&"asset3", 1);
+            output
+        };
+
+        let output1 = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 3;
+            output.assets.insert(&"asset1", 30);
+            output
+        };
+
+        let output2 = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 3;
+            output.assets.insert(&"asset1", 5);
+            output.assets.insert(&"asset2", 20);
+            output
+        };
+
+        let output3 = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 20;
+            output
+        };
+
+        let mut inputs = [
+            output0.clone(),
+            output1.clone(),
+            output2.clone(),
+            output3.clone(),
+        ];
+
+        assert_eq!(
+            select(&mut inputs, &goal, &ExtOutput::zero()),
+            Some((
+                [output2, output1, output3].as_mut_slice(),
+                [output0].as_mut_slice(),
+                {
+                    let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+                    output.value = 16;
+                    output.assets.insert(&"asset1", 25);
+                    output
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn test_ext_output_select_failed() {
+        let goal = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 10;
+            output.assets.insert(&"asset1", 10);
+            output.assets.insert(&"asset2", 20);
+            output
+        };
+
+        let output = {
+            let mut output: ExtOutput<u8, &str> = ExtOutput::zero();
+            output.value = 20;
+            output.assets.insert(&"asset1", 30);
+            output.assets.insert(&"asset3", 1);
+            output
+        };
+
+        assert_eq!(output.checked_sub(&goal), None);
+
+        let mut inputs = [output.clone()];
+
+        assert_eq!(select(&mut inputs, &goal, &ExtOutput::zero()), None);
     }
 }
