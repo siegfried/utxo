@@ -114,6 +114,15 @@ impl<I> Select for Output<I> {
 }
 
 /// Output with native assets (e.g. Cardano, Ergo)
+///
+/// The algorithm of selection picks the closest.
+/// 1. Computes `wanted - unwanted` assets in the outputs, the larger the better.
+/// Returns `0` if there are more unwanted assets.
+/// 2. If the values of #1 are equal, computes the absolute differences between
+/// `wanted` and `unwanted` of each output, the smaller the better.
+/// 3. If the values of #2 are equal, the more `wanted` assets the better.
+/// 4. If the values of #3 are equal, the fewer `unwanted` assets the better.
+/// 5. If the values of #4 are equal, the larger value the better.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtOutput<I, K> {
     pub id: Option<I>,
@@ -219,32 +228,32 @@ impl<I, K: Ord> ExtOutput<I, K> {
 
 #[derive(PartialEq, Eq)]
 struct AssetInfo {
-    mutual: usize,
-    diff: usize,
+    wanted: usize,
+    unwanted: usize,
 }
 
 impl AssetInfo {
-    fn new(mutual: usize, diff: usize) -> Self {
-        Self { mutual, diff }
+    fn new(wanted: usize, unwanted: usize) -> Self {
+        Self { wanted, unwanted }
     }
 
-    fn net_mutual(&self) -> usize {
-        self.mutual.saturating_sub(self.diff)
+    fn net_wanted(&self) -> usize {
+        self.wanted.saturating_sub(self.unwanted)
     }
 
     fn abs_diff(&self) -> usize {
-        self.mutual.abs_diff(self.diff)
+        self.wanted.abs_diff(self.unwanted)
     }
 }
 
 impl Ord for AssetInfo {
     fn cmp(&self, other: &Self) -> Ordering {
         other
-            .net_mutual()
-            .cmp(&self.net_mutual())
+            .net_wanted()
+            .cmp(&self.net_wanted())
             .then_with(|| self.abs_diff().cmp(&other.abs_diff()))
-            .then_with(|| other.mutual.cmp(&self.mutual))
-            .then_with(|| self.diff.cmp(&other.diff))
+            .then_with(|| other.wanted.cmp(&self.wanted))
+            .then_with(|| self.unwanted.cmp(&other.unwanted))
     }
 }
 
