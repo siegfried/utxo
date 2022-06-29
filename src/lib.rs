@@ -1,12 +1,13 @@
-//! General utilities of UTxO
-//!
-//! This package provides tools to ease the development of Cryptocurrencies based on UTxO model.
-//!
+/*!
+General utilities of UTxO
+
+This package provides tools to ease the development of Cryptocurrencies based on UTxO model.
+
+*/
 
 use std::{cmp::Ordering, collections::BTreeMap};
 
 /// The Select trait offers an interface of UTxO selection.
-///
 pub trait Select: Sized {
     /// Creates zero value of the UTxO type.
     fn zero() -> Self;
@@ -20,29 +21,33 @@ pub trait Select: Sized {
     /// Computes `self - rhs`, saturating at the lowest bound if overflow occurred.
     fn saturating_sub(&self, rhs: &Self) -> Self;
 
-    /// Compares two UTxOs to see which is better for the output, the less the better.
-    /// A good strategy of UTxO selection should:
-    ///
-    /// * spend as fewer UTxOs as possible;
-    /// * spend as fewer native assets as possible;
-    /// * produce as fewer [Dust] as possible;
-    ///
-    /// [Dust]: https://www.investopedia.com/terms/b/bitcoin-dust.asp
+    /**
+    Compares two UTxOs to see which is better for the output, the less the better.
+    A good strategy of UTxO selection should:
+
+    * spend as fewer UTxOs as possible;
+    * spend as fewer native assets as possible;
+    * produce as fewer [Dust] as possible;
+
+    [Dust]: https://www.investopedia.com/terms/b/bitcoin-dust.asp
+    */
     fn compare(&self, other: &Self, output: &Self) -> Ordering;
 }
 
-/// Select UTxOs.
-///
-/// # Arguments
-///
-/// * `inputs` - The available UTxOs to be selected from
-/// * `output` - The total output required
-/// * `threshold` - The minimum the total inputs exceed the total outputs, reserved to pay fees and avoid Dust
-///
-/// Returns `Some((selected, unselected, excess))` on success,
-/// otherwise returns `None` (no enough inputs).
-/// The `excess` can be used to pay the fee and return the change.
-/// The `unselected` UTxOs can be selected later if more are needed.
+/**
+Select UTxOs.
+
+# Arguments
+
+* `inputs` - The available UTxOs to be selected from
+* `output` - The total output required
+* `threshold` - The minimum the total inputs exceed the total outputs, reserved to pay fees and avoid Dust
+
+Returns `Some((selected, unselected, excess))` on success,
+otherwise returns `None` (no enough inputs).
+The `excess` can be used to pay the fee and return the change.
+The `unselected` UTxOs can be selected later if more are needed.
+*/
 pub fn select<'a, T: Select + Clone>(
     inputs: &'a mut [T],
     output: &T,
@@ -76,10 +81,12 @@ pub fn try_sum<T: Select>(outputs: &[T]) -> Option<T> {
         .try_fold(T::zero(), |acc, output| acc.checked_add(output))
 }
 
-/// Output without native assets (e.g. Bitcoin)
-///
-/// The algorithm of selection always chooses the largest output.
-/// It is expected to use fewer outputs.
+/**
+Output without native assets (e.g. Bitcoin)
+
+The algorithm of selection always chooses the largest output.
+It is expected to use fewer outputs.
+*/
 #[derive(Clone, Debug, PartialEq)]
 pub struct Output<I> {
     pub id: Option<I>,
@@ -120,18 +127,20 @@ impl<I> Select for Output<I> {
     }
 }
 
-/// Output with native assets (e.g. Cardano, Ergo)
-///
-/// The algorithm of selection picks the closest.
-/// 1. Computes `wanted - unwanted` assets in the outputs, the larger the better.
-/// Returns `0` if there are more unwanted assets.
-/// 2. If the values of #1 are equal, computes the absolute differences between
-/// `wanted` and `unwanted` of each output, the smaller the better.
-/// 3. If the values of #2 are equal, the more `wanted` assets the better.
-/// 4. If the values of #3 are equal, the fewer `unwanted` assets the better.
-/// 5. If the values of #4 are equal, the larger value the better.
-///
-/// The value of asset should not be `0`.
+/**
+Output with native assets (e.g. Cardano, Ergo)
+
+The algorithm of selection picks the closest.
+1. Computes `wanted - unwanted` assets in the outputs, the larger the better.
+Returns `0` if there are more unwanted assets.
+2. If the values of #1 are equal, computes the absolute differences between
+`wanted` and `unwanted` of each output, the smaller the better.
+3. If the values of #2 are equal, the more `wanted` assets the better.
+4. If the values of #3 are equal, the fewer `unwanted` assets the better.
+5. If the values of #4 are equal, the larger value the better.
+
+The value of asset should not be `0`.
+*/
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtOutput<I, K> {
     pub id: Option<I>,
