@@ -69,6 +69,7 @@ pub fn select<'a, T: Select + Clone>(
     Some((selected, unselected, excess))
 }
 
+/// Sum the total output, returning `None` if overflow occurred.
 pub fn try_sum<T: Select>(outputs: &[T]) -> Option<T> {
     outputs
         .iter()
