@@ -69,6 +69,12 @@ pub fn select<'a, T: Select + Clone>(
     Some((selected, unselected, excess))
 }
 
+pub fn try_sum<T: Select>(outputs: &[T]) -> Option<T> {
+    outputs
+        .iter()
+        .try_fold(T::zero(), |acc, output| acc.checked_add(output))
+}
+
 /// Output without native assets (e.g. Bitcoin)
 ///
 /// The algorithm of selection always chooses the largest output.
@@ -276,7 +282,7 @@ impl PartialOrd for AssetInfo {
 mod tests {
     use std::{cmp::Ordering, collections::BTreeMap};
 
-    use crate::{select, AssetInfo, ExtOutput, Output, Select};
+    use crate::{select, try_sum, AssetInfo, ExtOutput, Output, Select};
 
     impl<I> From<u64> for Output<I> {
         fn from(value: u64) -> Self {
@@ -514,5 +520,14 @@ mod tests {
             output.assets.insert(&"asset1", 1);
             output
         })
+    }
+
+    #[test]
+    fn test_try_sum() {
+        let inputs: [Output<u8>; 5] = [5.into(), 7.into(), 2.into(), 1.into(), 8.into()];
+        assert_eq!(try_sum(&inputs), Some(23.into()));
+
+        let inputs: [Output<u8>; 2] = [1.into(), u64::MAX.into()];
+        assert_eq!(try_sum(&inputs), None);
     }
 }
