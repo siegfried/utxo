@@ -88,36 +88,36 @@ The algorithm of selection always chooses the largest output.
 It is expected to use fewer outputs.
 */
 #[derive(Clone, Debug, PartialEq)]
-pub struct Output<I> {
-    pub id: Option<I>,
+pub struct Output<D> {
+    pub data: Option<D>,
     pub value: u64,
 }
 
 impl<I> Select for Output<I> {
     fn zero() -> Self {
         Self {
-            id: None,
+            data: None,
             value: u64::MIN,
         }
     }
 
     fn checked_add(&self, rhs: &Self) -> Option<Self> {
         Some(Self {
-            id: None,
+            data: None,
             value: self.value.checked_add(rhs.value)?,
         })
     }
 
     fn checked_sub(&self, rhs: &Self) -> Option<Self> {
         Some(Self {
-            id: None,
+            data: None,
             value: self.value.checked_sub(rhs.value)?,
         })
     }
 
     fn saturating_sub(&self, rhs: &Self) -> Self {
         Self {
-            id: None,
+            data: None,
             value: self.value.saturating_sub(rhs.value),
         }
     }
@@ -141,8 +141,8 @@ Returns `0` if there are more unwanted assets.
 The value of asset should not be `0`.
 */
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtOutput<I, K> {
-    pub id: Option<I>,
+pub struct ExtOutput<D, K> {
+    pub data: Option<D>,
     pub value: u64,
     pub assets: BTreeMap<K, u64>,
 }
@@ -150,7 +150,7 @@ pub struct ExtOutput<I, K> {
 impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
     fn zero() -> Self {
         Self {
-            id: None,
+            data: None,
             value: 0,
             assets: BTreeMap::new(),
         }
@@ -165,7 +165,7 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         }
 
         Some(Self {
-            id: None,
+            data: None,
             value: self.value.checked_add(rhs.value)?,
             assets,
         })
@@ -188,7 +188,7 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         }
 
         Some(Self {
-            id: None,
+            data: None,
             value: self.value.checked_sub(rhs.value)?,
             assets,
         })
@@ -211,7 +211,7 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         }
 
         Self {
-            id: None,
+            data: None,
             value: self.value.saturating_sub(rhs.value),
             assets,
         }
@@ -227,7 +227,7 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
     }
 }
 
-impl<I, K: Ord> ExtOutput<I, K> {
+impl<D, K: Ord> ExtOutput<D, K> {
     fn count_diff(&self, other: &Self) -> usize {
         self.assets
             .keys()
@@ -294,7 +294,7 @@ mod tests {
 
     impl<I> From<u64> for Output<I> {
         fn from(value: u64) -> Self {
-            Self { id: None, value }
+            Self { data: None, value }
         }
     }
 
@@ -373,7 +373,7 @@ mod tests {
             assets.insert(&"asset2", 20);
 
             ExtOutput {
-                id: None,
+                data: None,
                 value: 0,
                 assets,
             }
@@ -388,7 +388,7 @@ mod tests {
             assets.insert(&"asset3", 1);
 
             Some(ExtOutput {
-                id: None,
+                data: None,
                 value: 30,
                 assets,
             })
@@ -411,7 +411,7 @@ mod tests {
             assets.insert(&"asset2", 20);
 
             Some(ExtOutput {
-                id: None,
+                data: None,
                 value: 0,
                 assets,
             })
