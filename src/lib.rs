@@ -89,8 +89,14 @@ It is expected to use fewer outputs.
 */
 #[derive(Clone, Debug, PartialEq)]
 pub struct Output<D> {
-    pub data: Option<D>,
+    /// Coin value.
     pub value: u64,
+
+    /**
+    Optional data such as transaction hash, index and any other data needed later.
+    The output should be able to make a transaction input after selection.
+    */
+    pub data: Option<D>,
 }
 
 impl<I> Select for Output<I> {
@@ -142,9 +148,17 @@ The value of asset should not be `0`.
 */
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtOutput<D, K> {
-    pub data: Option<D>,
+    /// Coin value.
     pub value: u64,
+
+    /// Native assets.
     pub assets: BTreeMap<K, u64>,
+
+    /**
+    Optional data such as transaction hash, index and any other data needed later.
+    The output should be able to make a transaction input after selection.
+     */
+    pub data: Option<D>,
 }
 
 impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
