@@ -139,9 +139,8 @@ Output with native assets (e.g. Cardano, Ergo)
 The algorithm of selection picks the closest.
 1. Computes `wanted - unwanted` assets in the outputs, the larger the better.
 Returns `0` if there are more unwanted assets.
-2. If the values of #1 are equal, computes the absolute differences between
-`wanted` and `unwanted` of each output, the smaller the better.
-3. If the values of #2 are equal, the more `wanted` assets the better.
+2. If the values of #1 are equal, the more `wanted` assets the better.
+3. If the values of #2 are equal, the fewer `unwanted` assets the better.
 4. If the values of #3 are equal, the larger value the better.
 
 The value of asset should not be `0`.
@@ -278,10 +277,6 @@ impl AssetInfo {
     fn net_wanted(&self) -> usize {
         self.wanted.saturating_sub(self.unwanted)
     }
-
-    fn abs_diff(&self) -> usize {
-        self.wanted.abs_diff(self.unwanted)
-    }
 }
 
 impl Ord for AssetInfo {
@@ -289,8 +284,8 @@ impl Ord for AssetInfo {
         other
             .net_wanted()
             .cmp(&self.net_wanted())
-            .then_with(|| self.abs_diff().cmp(&other.abs_diff()))
             .then_with(|| other.wanted.cmp(&self.wanted))
+            .then_with(|| self.unwanted.cmp(&other.unwanted))
     }
 }
 
@@ -437,11 +432,14 @@ mod tests {
         assert!(AssetInfo::new(10, 0) < AssetInfo::new(1, 0));
         assert!(AssetInfo::new(10, 1) < AssetInfo::new(1, 0));
         assert!(AssetInfo::new(4, 2) < AssetInfo::new(5, 10));
-        assert!(AssetInfo::new(4, 4) < AssetInfo::new(5, 10));
+        assert!(AssetInfo::new(4, 4) > AssetInfo::new(5, 10));
         assert!(AssetInfo::new(1, 1) == AssetInfo::new(1, 1));
         assert!(AssetInfo::new(1, 1) < AssetInfo::new(0, 1));
         assert!(AssetInfo::new(1, 1) < AssetInfo::new(0, 0));
+        assert!(AssetInfo::new(1, 10) < AssetInfo::new(0, 0));
         assert!(AssetInfo::new(2, 2) < AssetInfo::new(1, 1));
+        assert!(AssetInfo::new(2, 2) < AssetInfo::new(2, 3));
+        assert!(AssetInfo::new(2, 3) < AssetInfo::new(2, 4));
     }
 
     #[test]
