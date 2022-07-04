@@ -102,29 +102,29 @@ pub struct Output<D> {
 impl<I> Select for Output<I> {
     fn zero() -> Self {
         Self {
-            data: None,
             value: u64::MIN,
+            data: None,
         }
     }
 
     fn checked_add(&self, rhs: &Self) -> Option<Self> {
         Some(Self {
-            data: None,
             value: self.value.checked_add(rhs.value)?,
+            data: None,
         })
     }
 
     fn checked_sub(&self, rhs: &Self) -> Option<Self> {
         Some(Self {
-            data: None,
             value: self.value.checked_sub(rhs.value)?,
+            data: None,
         })
     }
 
     fn saturating_sub(&self, rhs: &Self) -> Self {
         Self {
-            data: None,
             value: self.value.saturating_sub(rhs.value),
+            data: None,
         }
     }
 
@@ -161,12 +161,12 @@ pub struct ExtOutput<D, K> {
     pub data: Option<D>,
 }
 
-impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
+impl<D, K: Clone + Ord> Select for ExtOutput<D, K> {
     fn zero() -> Self {
         Self {
-            data: None,
             value: 0,
             assets: BTreeMap::new(),
+            data: None,
         }
     }
 
@@ -179,9 +179,9 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         }
 
         Some(Self {
-            data: None,
             value: self.value.checked_add(rhs.value)?,
             assets,
+            data: None,
         })
     }
 
@@ -202,9 +202,9 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         }
 
         Some(Self {
-            data: None,
             value: self.value.checked_sub(rhs.value)?,
             assets,
+            data: None,
         })
     }
 
@@ -225,9 +225,9 @@ impl<I, K: Clone + Ord> Select for ExtOutput<I, K> {
         }
 
         Self {
-            data: None,
             value: self.value.saturating_sub(rhs.value),
             assets,
+            data: None,
         }
     }
 
@@ -308,7 +308,7 @@ mod tests {
 
     impl<I> From<u64> for Output<I> {
         fn from(value: u64) -> Self {
-            Self { data: None, value }
+            Self { value, data: None }
         }
     }
 
@@ -387,9 +387,9 @@ mod tests {
             assets.insert(&"asset2", 20);
 
             ExtOutput {
-                data: None,
                 value: 0,
                 assets,
+                data: None,
             }
         });
 
@@ -402,9 +402,9 @@ mod tests {
             assets.insert(&"asset3", 1);
 
             Some(ExtOutput {
-                data: None,
                 value: 30,
                 assets,
+                data: None,
             })
         });
 
@@ -425,9 +425,9 @@ mod tests {
             assets.insert(&"asset2", 20);
 
             Some(ExtOutput {
-                data: None,
                 value: 0,
                 assets,
+                data: None,
             })
         });
     }
