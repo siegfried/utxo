@@ -414,6 +414,8 @@ mod tests {
         assert_eq!(goal.count_mutual(&output), 1);
         assert_eq!(output.count_diff(&goal), 0);
         assert_eq!(output.count_mutual(&goal), 1);
+        assert_eq!(goal.checked_sub(&goal).unwrap(), ExtOutput::zero());
+        assert_eq!(goal.checked_sub(&goal).unwrap().assets, BTreeMap::new());
 
         assert_eq!(goal.checked_sub(&output), {
             let mut assets: BTreeMap<&str, u64> = BTreeMap::new();
@@ -500,6 +502,13 @@ mod tests {
                     output
                 }
             ))
+        );
+
+        let mut inputs = [goal.clone()];
+
+        assert_eq!(
+            select(&mut inputs, &goal, &ExtOutput::zero()),
+            Some(([goal].as_mut_slice(), [].as_mut_slice(), ExtOutput::zero()))
         );
     }
 
