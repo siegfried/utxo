@@ -24,5 +24,7 @@ Licensed under either of
 ## Make a Donation
 
 ADA: addr1qyekuuu2szr9t525k7pve467lhuy6cdrwjfjrhjswatvgyc5kkvr22hlffqdj63vk8nf8rje5np37v4fwlpvj4c4qryqydr67v
+
 ERG: 9g5Ee9LV6ccoiMFW4hFUBTXY451DcBCcqJdampkdRUXaogAvACo
+
 BTC: 3A4x5xMo7ifhmNtAfcpftVmN3cAfJS9Eih
